@@ -6,6 +6,16 @@ select company_id, name
 from company_dim
 limit 10;
 
+select *
+from company_dim
+limit 10;
+
+select *
+from company_dim
+where name in ('Meta', 'Facebook')
+limit 10;
+
+
 select * 
 from information_schema.tables;
 
