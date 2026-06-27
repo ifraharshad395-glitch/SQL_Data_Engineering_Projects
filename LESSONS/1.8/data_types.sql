@@ -1,3 +1,5 @@
+select * from information_schema.columns;
+
 select table_name, column_name, data_type
  from information_schema.columns 
 where table_name = 'job_postings_fact';
@@ -49,3 +51,6 @@ cast(salary_year_avg as decimal(10,0)) as salary_year_avg
 from job_postings_fact 
 where salary_year_avg is not null
 limit 10;
+
+select job_posted_date
+from job_postings_fact;

@@ -1,143 +1,107 @@
 
 ---subquery
 
-select * 
-from (
-    select * from job_postings_fact
-    where salary_year_avg is not null 
-    or salary_hour_avg is not null
-)
-limit 10;
-
----ctes
-
-with valid_salaries as (
-    select * from job_postings_fact
-    where salary_year_avg is not null 
-    or salary_hour_avg is not null
-    limit 10
-)
-select * from valid_salaries;
-
-select job_title_short, salary_year_avg,
-(select median(salary_year_avg) 
-from job_postings_fact
-) as market_median_salary
-from job_postings_fact
-where salary_year_avg is not null
-limit 10;
-
-select job_title_short, median(salary_year_avg) as median_salary,
-(select median(salary_year_avg) 
-from job_postings_fact
-where job_work_from_home = true
-) as market_remote_median_salary
-from 
-(select job_title_short, salary_year_avg
-from job_postings_fact
-where job_work_from_home = true
-)
-group by job_title_short
-limit 10;
-
-
-select job_title_short, median(salary_year_avg) as median_salary,
-(select median(salary_year_avg) 
-from job_postings_fact
-where job_work_from_home = true
-) as market_remote_median_salary
-from 
-(select job_title_short, salary_year_avg
-from job_postings_fact
-where job_work_from_home = true
-)
-group by job_title_short
-having median(salary_year_avg) > 
-(select median(salary_year_avg) 
-from job_postings_fact
-where job_work_from_home = true
-)
-limit 10;
-
-
-with title_median as (
-select job_title_short, job_work_from_home, cast(median(salary_year_avg) as int) as median_salary
-from job_postings_fact
-where job_country = 'United States'
-group by job_title_short, job_work_from_home)
-
-select r.job_title_short, r.median_salary as remote_median_salary,
-o.median_salary as onsite_median_salary,
-(r.median_salary - o.median_salary) as remote_premium
-from title_median as r
-inner join title_median as o on 
-r.job_title_short = o.job_title_short 
-where r.job_work_from_home = true
-and o.job_work_from_home = false
-order by remote_premium desc;
-
-
-
-select range(10);
-
-select range(3);
-
 select *
-from range(3);
+ from 
+ ( select * from job_postings_fact
+ where salary_year_avg is not null or 
+ salary_hour_avg is not null); 
 
-select * 
-from range(3) as src;
+ --cte 
 
-select * 
-from range(3) as src(key); ---source table
+ with valid_salaries as (
+   select * from job_postings_fact
+ where salary_year_avg is not null or 
+ salary_hour_avg is not null)
 
-select * 
-from range(2) as trgt(key); ---target table
-
-select * 
-from range(3) as src(key)
-where exists (
-    select 1 
-    from range(2) as trgt(key)
-    where src.key = trgt.key
-);
+ select * from valid_salaries;
 
 
+--subquery examples
 
-select * 
-from range(3) as src(key)
-where not exists (
-    select 1 
-    from range(2) as trgt(key)
-    where src.key = trgt.key
-);
+ --subquery in select (show each jobs' salary next to the overall market median salray)
 
-
-select * 
+ select job_title_short, salary_year_avg,
+ (select 
+    median(salary_year_avg)
+    from job_postings_fact) as overall_market_median
 from job_postings_fact
-order by job_id
+where salary_year_avg is not null;
+ 
+--subquery in from (stage only jobs that are remote before aggregating to determine the remote median salary per job)
+
+select job_title_short, median(salary_year_avg) as median_salary,
+(select median(salary_year_avg)
+from job_postings_fact 
+where job_work_from_home = true) as market_remote_median_salary
+from (
+    select job_title_short, salary_year_avg 
+    from job_postings_fact
+    where job_work_from_home = true
+) as remote_jobs
+group by job_title_short;
+
+--subquery in having (keep onloy job titles whose median salary is above the overall median)
+
+select job_title_short, median(salary_year_avg) as median_salary,
+(select median(salary_year_avg)
+from job_postings_fact 
+where job_work_from_home = true) as market_remote_median_salary
+from (
+    select job_title_short, salary_year_avg 
+    from job_postings_fact
+    where job_work_from_home = true
+) as remote_jobs
+group by job_title_short
+having median(salary_year_avg) > (
+    select median(salary_year_avg)
+from job_postings_fact 
+where job_work_from_home = true
+);
+
+
+
+
+
+---cte examples
+ ---compare how much mor (or less) remote roles pay compared to onsite roles for each job title
+ --use a cte to calculate the median salary by title and work arrangement, then compare these
+
+ with title_median as (
+ select job_title_short, job_work_from_home, 
+ cast(median(salary_year_avg) as int) as median_salary
+ from job_postings_fact
+ where job_country = 'United States'
+ group by job_title_short, job_work_from_home
+ )
+
+ select r.job_title_short, 
+ r.median_salary as remote_median_salary,
+ o.median_salary as onsite_median_salary,
+ (r.median_salary - o.median_salary) as remote_premium
+ from title_median as r inner join title_median as o 
+ on r.job_title_short = o.job_title_short
+ where r.job_work_from_home = true
+ and o.job_work_from_home = false
+ order by remote_premium desc;
+
+
+
+--source src and target tgt tables
+
+--identify job postings that have no associated skills before loading them into a data mart
+
+select * from job_postings_fact 
 limit 10;
 
-select * 
-from skills_job_dim
-order by job_id
+select * from skills_job_dim
 limit 40;
 
---taking the job_postings_fact as src table and skills_job_dim as trgt table
-
 select * 
-from job_postings_fact as jpf
+from job_postings_fact as tgt 
 where not exists (
     select 1 
-    from skills_job_dim  as sjd
-    where jpf.job_id = sjd.job_id
-);
-
-select * 
-from job_postings_fact as src
-where not exists (
-    select 1 
-    from skills_job_dim  as trgt
-    where src.job_id = trgt.job_id
-)
-order by job_id;
+    from skills_job_dim as src
+    where tgt.job_id = src.job_id
+) 
+order by job_id; 
