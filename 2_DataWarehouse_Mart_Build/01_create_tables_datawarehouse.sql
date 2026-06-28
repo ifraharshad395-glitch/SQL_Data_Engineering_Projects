@@ -1,1 +1,2 @@
---Step 1 create starschema tables 
+--Step 1 create star schema tables 
+ 
